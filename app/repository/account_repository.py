@@ -19,3 +19,9 @@ class AccountRepository:
 
         return account_balance
 
+    def find_by_id(self, db: Session, account_id: int) -> type[Account] | None:
+        return (
+            db.query(Account)
+            .filter(Account.id == account_id)
+            .first()
+        )
