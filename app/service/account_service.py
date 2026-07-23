@@ -44,3 +44,23 @@ class AccountService:
         self.account_repository.save_account_balance(db,account_balance)
 
         return saved_account
+
+    def get_available_balance(
+            self,
+            account_balance: AccountBalance
+    ) -> float:
+
+        if account_balance.debit_transaction_blocked:
+            return 0.0
+
+        balance = account_balance.balance or 0.0
+        overdraft_limit = account_balance.overdraft_limit or 0.0
+        blocked_balance = account_balance.blocked_balance or 0.0
+
+        available_balance = (
+            balance
+            + overdraft_limit
+            - blocked_balance
+        )
+
+        return max(available_balance, 0.0)

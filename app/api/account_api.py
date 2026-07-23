@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.schemas.account_request import AccountCreateRequest
-from app.Service.account_service import AccountService
+from app.service.account_service import AccountService
 
 
 router = APIRouter(prefix="/account", tags=["Accounts"])
