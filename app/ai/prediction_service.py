@@ -34,3 +34,5 @@ class PredictionService:
         prediction = self.model.predict(features)
 
         return prediction[0]
+
+    
