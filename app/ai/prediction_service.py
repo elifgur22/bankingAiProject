@@ -3,6 +3,8 @@ from pathlib import Path
 import joblib
 import pandas as pd
 
+from app.ai.prediction_result import PredictionResult
+
 
 class PredictionService:
 
@@ -20,7 +22,7 @@ class PredictionService:
             available_balance: float,
             blocked_balance: float,
             debit_blocked: bool
-    ) -> str:
+    ) -> PredictionResult:
 
         features = pd.DataFrame([
             {
@@ -31,8 +33,12 @@ class PredictionService:
             }
         ])
 
-        prediction = self.model.predict(features)
+        risk_level = self.model.predict(features)[0]
 
-        return prediction[0]
+        probabilities = self.model.predict_proba(features)[0]
+        risk_score = float(max(probabilities))
 
-    
+        return PredictionResult(
+            risk_level=risk_level,
+            risk_score=risk_score
+        )
