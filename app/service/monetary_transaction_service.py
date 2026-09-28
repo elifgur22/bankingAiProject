@@ -1,22 +1,27 @@
 from sqlalchemy.orm import Session
 
+from app.core.logging_config import get_logger
+from app.database import transactional
 from app.domain.monetary_transaction import MonetaryTransaction
+from app.enum.transaction_direction import TransactionDirection
 from app.enum.transaction_type import TransactionType
-from app.exceptions.business_exception import BusinessException
-from app.repository.account_repository import AccountRepository
-from app.repository.monetary_transaction_repository import MonetaryTransactionRepository
 from app.schemas.monetary_transaction_request import MonetaryTransactionRequest
-from app.service.account_balance_service import AccountBalanceService
-from app.enum.account_validation_rule import AccountValidationRule
-from app.ai.prediction_service import  PredictionService
+from app.service.transaction_posting_service import (
+    PostingResult,
+    TransactionPostingService
+)
+
+logger = get_logger(__name__)
+
 
 class MonetaryTransactionService:
+    """Deposit and withdraw orchestration."""
 
-    def __init__(self):
-        self.transaction_repository = MonetaryTransactionRepository()
-        self.account_repository = AccountRepository()
-        self.account_balance_service = AccountBalanceService()
-        self.prediction_service = PredictionService()
+    def __init__(
+            self,
+            posting_service: TransactionPostingService | None = None
+    ):
+        self.posting_service = posting_service or TransactionPostingService()
 
     def deposit(
             self,
@@ -24,28 +29,11 @@ class MonetaryTransactionService:
             request: MonetaryTransactionRequest
     ) -> MonetaryTransaction:
 
-        self._validate_account_exists(
+        return self._execute(
             db,
-            request.account_id
-        )
-
-        account_balance = (
-            self.account_balance_service.get_required_balance(
-                db,
-                request.account_id
-            )
-        )
-
-        self.account_balance_service.increase_balance(
-            db,
-            account_balance,
-            request.amount
-        )
-
-        return self._create_and_save_transaction(
-            db=db,
-            request=request,
-            transaction_type=TransactionType.DEPOSIT
+            request,
+            TransactionType.DEPOSIT,
+            TransactionDirection.CREDIT
         )
 
     def withdraw(
@@ -54,88 +42,52 @@ class MonetaryTransactionService:
             request: MonetaryTransactionRequest
     ) -> MonetaryTransaction:
 
-        self._validate_account_exists(
+        return self._execute(
             db,
-            request.account_id
+            request,
+            TransactionType.WITHDRAW,
+            TransactionDirection.DEBIT
         )
 
-        account_balance = (
-            self.account_balance_service.get_required_balance(
-                db,
-                request.account_id
-            )
-        )
-
-        if account_balance.debit_transaction_blocked:
-            raise BusinessException(
-                AccountValidationRule.DEBIT_TRANSACTION_BLOCKED
-            )
-
-        available_balance = (
-            self.account_balance_service.calculate_available_balance(
-                account_balance
-            )
-        )
-
-        if request.amount > available_balance:
-            raise BusinessException(
-                AccountValidationRule.INSUFFICIENT_BALANCE
-            )
-        prediction_result = self.prediction_service.predict_risk(
-            transaction_amount=request.amount,
-            available_balance=available_balance,
-            blocked_balance=account_balance.blocked_balance,
-            debit_blocked=account_balance.debit_transaction_blocked
-        )
-
-        self.account_balance_service.decrease_balance(
-            db,
-            account_balance,
-            request.amount
-        )
-
-        return self._create_and_save_transaction(
-            db=db,
-            request=request,
-            transaction_type=TransactionType.WITHDRAW
-        )
-
-    def _validate_account_exists(
-            self,
-            db: Session,
-            account_id: int
-    ) -> None:
-
-        account = self.account_repository.find_by_id(
-            db,
-            account_id
-        )
-
-        if account is None:
-            raise BusinessException(
-                AccountValidationRule.ACCOUNT_NOT_FOUND
-            )
-
-    def _create_and_save_transaction(
+    def _execute(
             self,
             db: Session,
             request: MonetaryTransactionRequest,
             transaction_type: TransactionType,
-            risk_level: str | None = None,
-            risk_score: float | None = None
+            direction: TransactionDirection
     ) -> MonetaryTransaction:
 
-        transaction = MonetaryTransaction(
-            account_id=request.account_id,
-            transaction_type=transaction_type,
-            amount=request.amount,
-            currency=request.currency,
-            branch=request.branch,
-            risk_level=risk_level,
-            risk_score=risk_score
-        )
+        with transactional(db):
+            result: PostingResult = self.posting_service.post(
+                db=db,
+                account_id=request.account_id,
+                transaction_type=transaction_type,
+                direction=direction,
+                amount=request.amount,
+                currency=request.currency,
+                branch=request.branch,
+                description=request.description
+            )
 
-        return self.transaction_repository.save(
-            db,
-            transaction
+        self._log(transaction_type, request, result)
+
+        return result.transaction
+
+    @staticmethod
+    def _log(
+            transaction_type: TransactionType,
+            request: MonetaryTransactionRequest,
+            result: PostingResult
+    ) -> None:
+
+        assessment = result.assessment
+
+        logger.info(
+            "%s account_id=%s amount=%s risk=%s score=%s source=%s",
+            transaction_type.value,
+            request.account_id,
+            request.amount,
+            assessment.risk_level if assessment else "N/A",
+            assessment.risk_score if assessment else "N/A",
+            assessment.source if assessment else "N/A"
         )

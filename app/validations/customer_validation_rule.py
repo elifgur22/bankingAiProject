@@ -5,12 +5,14 @@ class CustomerValidationRule(Enum):
 
     CUSTOMER_NOT_FOUND = (
         "CUS_001",
-        "Customer not found."
+        "Customer not found.",
+        404
     )
 
     CUSTOMER_ALREADY_EXISTS = (
         "CUS_002",
-        "Customer already exists."
+        "Customer already exists.",
+        409
     )
 
     CUSTOMER_NUMBER_CAN_NOT_BE_EMPTY = (
@@ -28,6 +30,7 @@ class CustomerValidationRule(Enum):
         "Customer is not active."
     )
 
-    def __init__(self, code: str, message: str):
+    def __init__(self, code: str, message: str, http_status: int = 400):
         self.code = code
         self.message = message
+        self.http_status = http_status
