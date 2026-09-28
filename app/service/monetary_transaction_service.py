@@ -1,18 +1,27 @@
 from sqlalchemy.orm import Session
 
+from app.core.logging_config import get_logger
+from app.database import transactional
 from app.domain.monetary_transaction import MonetaryTransaction
-from app.repository.account_balance_repository import AccountBalanceRepository
-from app.repository.account_repository import AccountRepository
-from app.repository.monetary_transaction_repository import MonetaryTransactionRepository
+from app.enum.transaction_direction import TransactionDirection
+from app.enum.transaction_type import TransactionType
 from app.schemas.monetary_transaction_request import MonetaryTransactionRequest
+from app.service.transaction_posting_service import (
+    PostingResult,
+    TransactionPostingService
+)
+
+logger = get_logger(__name__)
 
 
 class MonetaryTransactionService:
+    """Deposit and withdraw orchestration."""
 
-    def __init__(self):
-        self.transaction_repository = MonetaryTransactionRepository()
-        self.account_repository = AccountRepository()
-        self.account_balance_repository = AccountBalanceRepository()
+    def __init__(
+            self,
+            posting_service: TransactionPostingService | None = None
+    ):
+        self.posting_service = posting_service or TransactionPostingService()
 
     def deposit(
             self,
@@ -20,37 +29,11 @@ class MonetaryTransactionService:
             request: MonetaryTransactionRequest
     ) -> MonetaryTransaction:
 
-        account = self.account_repository.find_by_id(db, request.account_id)
-
-        if account is None:
-            raise Exception("Account not found")
-
-        account_balance = self.account_balance_repository.find_by_account_id(
+        return self._execute(
             db,
-            request.account_id
-        )
-
-        if account_balance is None:
-            raise Exception("Account balance not found")
-
-        account_balance.balance += request.amount
-
-        self.account_balance_repository.save(
-            db,
-            account_balance
-        )
-
-        transaction = MonetaryTransaction(
-            account_id=request.account_id,
-            transaction_type=request.transaction_type,
-            amount=request.amount,
-            currency=request.currency,
-            branch=request.branch
-        )
-
-        return self.transaction_repository.save(
-            db,
-            transaction
+            request,
+            TransactionType.DEPOSIT,
+            TransactionDirection.CREDIT
         )
 
     def withdraw(
@@ -59,49 +42,52 @@ class MonetaryTransactionService:
             request: MonetaryTransactionRequest
     ) -> MonetaryTransaction:
 
-        account = self.account_repository.find_by_id(db, request.account_id)
-
-        if account is None:
-            raise Exception("Account not found")
-
-        account_balance = self.account_balance_repository.find_by_account_id(
+        return self._execute(
             db,
-            request.account_id
+            request,
+            TransactionType.WITHDRAW,
+            TransactionDirection.DEBIT
         )
 
-        if account_balance is None:
-            raise Exception("Account balance not found")
+    def _execute(
+            self,
+            db: Session,
+            request: MonetaryTransactionRequest,
+            transaction_type: TransactionType,
+            direction: TransactionDirection
+    ) -> MonetaryTransaction:
 
-        if account_balance.debit_transaction_blocked:
-            raise Exception("Debit transactions are blocked for this account")
+        with transactional(db):
+            result: PostingResult = self.posting_service.post(
+                db=db,
+                account_id=request.account_id,
+                transaction_type=transaction_type,
+                direction=direction,
+                amount=request.amount,
+                currency=request.currency,
+                branch=request.branch,
+                description=request.description
+            )
 
-        available_balance = (
-                account_balance.balance
-                + account_balance.overdraft_limit
-                - account_balance.blocked_balance
-        )
+        self._log(transaction_type, request, result)
 
-        if request.amount > available_balance:
-            raise Exception("Insufficient balance")
+        return result.transaction
 
-        # AI comes here👇
+    @staticmethod
+    def _log(
+            transaction_type: TransactionType,
+            request: MonetaryTransactionRequest,
+            result: PostingResult
+    ) -> None:
 
-        account_balance.balance -= request.amount
+        assessment = result.assessment
 
-        self.account_balance_repository.save(
-            db,
-            account_balance
-        )
-
-        transaction = MonetaryTransaction(
-            account_id=request.account_id,
-            transaction_type=request.transaction_type,
-            amount=request.amount,
-            currency=request.currency,
-            branch=request.branch
-        )
-
-        return self.transaction_repository.save(
-            db,
-            transaction
+        logger.info(
+            "%s account_id=%s amount=%s risk=%s score=%s source=%s",
+            transaction_type.value,
+            request.account_id,
+            request.amount,
+            assessment.risk_level if assessment else "N/A",
+            assessment.risk_score if assessment else "N/A",
+            assessment.source if assessment else "N/A"
         )

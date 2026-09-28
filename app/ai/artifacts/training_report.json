@@ -1,0 +1,264 @@
+{
+  "dataset": {
+    "rows": 8000,
+    "seed": 42,
+    "source": "synthetic (app.ai.dataset_generator)",
+    "risk_level_distribution": {
+      "LOW": 0.58725,
+      "MEDIUM": 0.313,
+      "HIGH": 0.09975
+    },
+    "fraud_rate": 0.044875
+  },
+  "risk_model": {
+    "name": "risk",
+    "model_path": "/Users/elifgur/PycharmProjects/BankingApp/app/ai/transaction_risk_model.joblib",
+    "train_rows": 6000,
+    "test_rows": 2000,
+    "metrics": {
+      "accuracy": 0.8965,
+      "precision": 0.8820118103454994,
+      "recall": 0.8321330096717484,
+      "f1": 0.8529660865130748,
+      "support": 2000,
+      "classification_report": {
+        "HIGH": {
+          "precision": 0.8846153846153846,
+          "recall": 0.69,
+          "f1-score": 0.7752808988764045,
+          "support": 200.0
+        },
+        "LOW": {
+          "precision": 0.9366138448707256,
+          "recall": 0.9565587734241908,
+          "f1-score": 0.9464812473662031,
+          "support": 1174.0
+        },
+        "MEDIUM": {
+          "precision": 0.8248062015503876,
+          "recall": 0.8498402555910544,
+          "f1-score": 0.8371361132966169,
+          "support": 626.0
+        },
+        "accuracy": 0.8965,
+        "macro avg": {
+          "precision": 0.8820118103454994,
+          "recall": 0.8321330096717484,
+          "f1-score": 0.8529660865130748,
+          "support": 2000.0
+        },
+        "weighted avg": {
+          "precision": 0.8964182064859256,
+          "recall": 0.8965,
+          "f1-score": 0.8951361855534428,
+          "support": 2000.0
+        }
+      },
+      "confusion_matrix": {
+        "labels": [
+          "HIGH",
+          "LOW",
+          "MEDIUM"
+        ],
+        "matrix": [
+          [
+            138,
+            0,
+            62
+          ],
+          [
+            0,
+            1123,
+            51
+          ],
+          [
+            18,
+            76,
+            532
+          ]
+        ]
+      }
+    },
+    "feature_importances": [
+      {
+        "feature": "numeric__amount_to_available_ratio",
+        "importance": 0.5091853438741787
+      },
+      {
+        "feature": "numeric__transaction_amount",
+        "importance": 0.17293196678420725
+      },
+      {
+        "feature": "numeric__debit_transaction_blocked",
+        "importance": 0.12597798801965793
+      },
+      {
+        "feature": "numeric__blocked_balance",
+        "importance": 0.05904077089280655
+      },
+      {
+        "feature": "numeric__available_balance",
+        "importance": 0.047942044557160154
+      },
+      {
+        "feature": "numeric__current_balance",
+        "importance": 0.03249458916140368
+      },
+      {
+        "feature": "numeric__overdraft_limit",
+        "importance": 0.01788701657962985
+      },
+      {
+        "feature": "numeric__is_primary_account",
+        "importance": 0.00885128341993223
+      },
+      {
+        "feature": "categorical__transaction_type_WITHDRAW",
+        "importance": 0.0026166697886264452
+      },
+      {
+        "feature": "categorical__currency_TRY",
+        "importance": 0.0025616127930644765
+      },
+      {
+        "feature": "categorical__transaction_type_TRANSFER",
+        "importance": 0.0025348072978231056
+      },
+      {
+        "feature": "categorical__transaction_type_DEPOSIT",
+        "importance": 0.002497250832610845
+      },
+      {
+        "feature": "categorical__account_type_CREDIT_CARD_ACCOUNT",
+        "importance": 0.0018871923670085561
+      },
+      {
+        "feature": "categorical__account_type_FOREIGN_CURRENCY_ACCOUNT",
+        "importance": 0.0017736489781104542
+      },
+      {
+        "feature": "categorical__account_type_INVESTMENT_ACCOUNT",
+        "importance": 0.0017352925414375626
+      }
+    ]
+  },
+  "fraud_model": {
+    "name": "fraud",
+    "model_path": "/Users/elifgur/PycharmProjects/BankingApp/app/ai/transaction_fraud_model.joblib",
+    "train_rows": 6000,
+    "test_rows": 2000,
+    "metrics": {
+      "accuracy": 0.8965,
+      "precision": 0.2631578947368421,
+      "recall": 0.7222222222222222,
+      "f1": 0.3857566765578635,
+      "support": 2000,
+      "classification_report": {
+        "0": {
+          "precision": 0.9857387335995437,
+          "recall": 0.9047120418848168,
+          "f1-score": 0.9434889434889435,
+          "support": 1910.0
+        },
+        "1": {
+          "precision": 0.2631578947368421,
+          "recall": 0.7222222222222222,
+          "f1-score": 0.3857566765578635,
+          "support": 90.0
+        },
+        "accuracy": 0.8965,
+        "macro avg": {
+          "precision": 0.6244483141681929,
+          "recall": 0.8134671320535195,
+          "f1-score": 0.6646228100234035,
+          "support": 2000.0
+        },
+        "weighted avg": {
+          "precision": 0.9532225958507221,
+          "recall": 0.8965,
+          "f1-score": 0.918390991477045,
+          "support": 2000.0
+        }
+      },
+      "confusion_matrix": {
+        "labels": [
+          "0",
+          "1"
+        ],
+        "matrix": [
+          [
+            1728,
+            182
+          ],
+          [
+            25,
+            65
+          ]
+        ]
+      },
+      "roc_auc": 0.8765037812681791
+    },
+    "feature_importances": [
+      {
+        "feature": "numeric__amount_to_available_ratio",
+        "importance": 0.26748046451712865
+      },
+      {
+        "feature": "numeric__debit_transaction_blocked",
+        "importance": 0.2670317287882244
+      },
+      {
+        "feature": "numeric__transaction_amount",
+        "importance": 0.14589814798742037
+      },
+      {
+        "feature": "numeric__available_balance",
+        "importance": 0.06204314246146034
+      },
+      {
+        "feature": "numeric__current_balance",
+        "importance": 0.057199427146353315
+      },
+      {
+        "feature": "categorical__transaction_type_TRANSFER",
+        "importance": 0.03332449947811007
+      },
+      {
+        "feature": "numeric__overdraft_limit",
+        "importance": 0.03113461925858634
+      },
+      {
+        "feature": "categorical__currency_TRY",
+        "importance": 0.023781806305450886
+      },
+      {
+        "feature": "numeric__blocked_balance",
+        "importance": 0.01935471852699226
+      },
+      {
+        "feature": "numeric__is_primary_account",
+        "importance": 0.011404161477110717
+      },
+      {
+        "feature": "categorical__currency_USD",
+        "importance": 0.01049563651867858
+      },
+      {
+        "feature": "categorical__transaction_type_WITHDRAW",
+        "importance": 0.009670125906852184
+      },
+      {
+        "feature": "categorical__transaction_type_DEPOSIT",
+        "importance": 0.00950464365714112
+      },
+      {
+        "feature": "categorical__currency_EUR",
+        "importance": 0.009246695776893254
+      },
+      {
+        "feature": "categorical__account_type_INVESTMENT_ACCOUNT",
+        "importance": 0.007412125269940828
+      }
+    ]
+  }
+}

@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+
+# Local database
+*.db
+*.sqlite3
+
+# Environment
+.env
+
+# Trained models: ~12 MB of binaries, reproducible in seconds with
+# `python -m app.ai.train_model`. The evaluation reports under
+# app/ai/artifacts/ are committed instead.
+app/ai/*.joblib
+
+# Tooling / OS / IDE
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+.idea/
+.vscode/
+.DS_Store

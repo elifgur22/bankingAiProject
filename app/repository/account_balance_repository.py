@@ -9,7 +9,7 @@ class AccountBalanceRepository:
             self,
             db: Session,
             account_id: int
-    ) -> type[AccountBalance] | None:
+    ) -> AccountBalance | None:
 
         return (
             db.query(AccountBalance)
@@ -24,7 +24,7 @@ class AccountBalanceRepository:
     ) -> AccountBalance:
 
         db.add(account_balance)
-        db.commit()
+        db.flush()
         db.refresh(account_balance)
 
         return account_balance
