@@ -12,6 +12,9 @@ class UserRepository:
 
         return user
 
+    def count(self, db: Session) -> int:
+        return db.query(User).count()
+
     def find_by_username(self, db: Session, username: str) -> User | None:
         return (
             db.query(User)

@@ -9,9 +9,14 @@ from app.core.security import (
 )
 from app.database import transactional
 from app.domain.user import User
+from app.enum.user_role import UserRole
 from app.exceptions.business_exception import BusinessException
 from app.repository.user_repository import UserRepository
-from app.schemas.auth_request import UserLoginRequest, UserRegisterRequest
+from app.schemas.auth_request import (
+    UserCreateRequest,
+    UserLoginRequest,
+    UserRegisterRequest
+)
 from app.schemas.responses import TokenResponse
 from app.validations.auth_validation_rule import AuthValidationRule
 
@@ -24,31 +29,28 @@ class AuthService:
         self.user_repository = user_repository or UserRepository()
 
     def register(self, db: Session, request: UserRegisterRequest) -> User:
-        with transactional(db):
-            existing = self.user_repository.find_by_username(
-                db,
-                request.username
-            )
+        """Self service registration.
 
-            if existing is not None:
-                raise BusinessException(
-                    AuthValidationRule.USERNAME_ALREADY_EXISTS
-                )
+        The very first user of an empty installation becomes ADMIN so the
+        system can be bootstrapped; everybody after that is a CUSTOMER and
+        can only be promoted by an existing ADMIN.
+        """
 
-            user = self.user_repository.save(
-                db,
-                User(
-                    username=request.username,
-                    hashed_password=hash_password(request.password),
-                    role=request.role,
-                    is_active=True
-                )
-            )
+        is_bootstrap = self.user_repository.count(db) == 0
 
-        logger.info("USER_REGISTERED username=%s role=%s",
-                    user.username, user.role)
+        role = UserRole.ADMIN if is_bootstrap else UserRole.CUSTOMER
 
-        return user
+        return self._create_user(db, request.username, request.password, role)
+
+    def create_user(self, db: Session, request: UserCreateRequest) -> User:
+        """Administrative user creation with an explicit role."""
+
+        return self._create_user(
+            db,
+            request.username,
+            request.password,
+            request.role
+        )
 
     def login(self, db: Session, request: UserLoginRequest) -> TokenResponse:
         user = self.user_repository.find_by_username(db, request.username)
@@ -64,12 +66,10 @@ class AuthService:
 
         settings = get_settings()
 
-        role_value = getattr(user.role, "value", user.role)
-
         return TokenResponse(
             access_token=create_access_token(
                 subject=user.username,
-                role=role_value
+                role=getattr(user.role, "value", user.role)
             ),
             expires_in_minutes=settings.jwt_access_token_expire_minutes,
             role=user.role
@@ -77,3 +77,37 @@ class AuthService:
 
     def get_user_by_username(self, db: Session, username: str) -> User | None:
         return self.user_repository.find_by_username(db, username)
+
+    def _create_user(
+            self,
+            db: Session,
+            username: str,
+            password: str,
+            role: UserRole
+    ) -> User:
+
+        with transactional(db):
+            existing = self.user_repository.find_by_username(db, username)
+
+            if existing is not None:
+                raise BusinessException(
+                    AuthValidationRule.USERNAME_ALREADY_EXISTS
+                )
+
+            user = self.user_repository.save(
+                db,
+                User(
+                    username=username,
+                    hashed_password=hash_password(password),
+                    role=role,
+                    is_active=True
+                )
+            )
+
+        logger.info(
+            "USER_CREATED username=%s role=%s",
+            user.username,
+            role.value
+        )
+
+        return user
